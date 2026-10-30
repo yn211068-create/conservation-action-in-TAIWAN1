@@ -1,0 +1,799 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>台灣保育行動地圖</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;900&display=swap">
+<style>
+/* Layout: sticky tab header; Outcomes = animal index + one panel at a time; Volunteers = filter bar + card grid */
+:root{
+  --bg:#eaf0ea; --surface:#f8fbf7; --ink:#12241d; --muted:#53655c; --line:#cfd9d0;
+  --accent:#0a6b5b; --accent-soft:#d3e8e0; --on-accent:#ffffff;
+  --good:#2b7a3a; --warn:#a85f0c; --crit:#b0322b;
+  --c-bear:#6e4a37; --c-cat:#a9691a; --c-pang:#6f6a45; --c-bird:#22799a; --c-dolphin:#3a5fa8; --c-turtle:#1f8a73; --c-fish:#b24d68;
+  --serif:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1814; --surface:#15231d; --ink:#e6efe8; --muted:#97aa9f; --line:#27382f;
+  --accent:#58c5ae; --accent-soft:#17342c; --on-accent:#08201a;
+  --good:#6cc17a; --warn:#e0a24f; --crit:#ec7b72;
+  --c-bear:#c79a82; --c-cat:#e0a65a; --c-pang:#c4bd8a; --c-bird:#5cc0e4; --c-dolphin:#8aa9ee; --c-turtle:#5fd2b8; --c-fish:#ea8aa4; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1814; --surface:#15231d; --ink:#e6efe8; --muted:#97aa9f; --line:#27382f;
+  --accent:#58c5ae; --accent-soft:#17342c; --on-accent:#08201a;
+  --good:#6cc17a; --warn:#e0a24f; --crit:#ec7b72;
+  --c-bear:#c79a82; --c-cat:#e0a65a; --c-pang:#c4bd8a; --c-bird:#5cc0e4; --c-dolphin:#8aa9ee; --c-turtle:#5fd2b8; --c-fish:#ea8aa4; color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.7;
+  padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30}
+.wrap{max-width:1120px;margin:0 auto}
+a{color:var(--accent);text-underline-offset:2px}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+h1,h2,h3{font-family:var(--serif);text-wrap:balance;line-height:1.3;margin:0}
+p{margin:0}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding-block:10px}
+.brand{font-family:var(--serif);font-weight:900;font-size:17px;letter-spacing:.04em}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px}
+.tabs button{font:inherit;font-weight:500;border:0;background:transparent;color:var(--muted);padding:6px 16px;border-radius:999px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--on-accent)}
+
+/* hero */
+.hero{padding-block:36px 20px;display:grid;gap:18px}
+.hero h1{font-size:clamp(28px,5vw,46px);font-weight:900;letter-spacing:.02em}
+.hero .lede{max-width:62ch;color:var(--muted)}
+.asof{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.nat{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.nat div{background:var(--surface);padding:14px 16px;min-width:0}
+.nat .k{font-size:12px;color:var(--muted);letter-spacing:.06em}
+.nat .v{font-family:var(--mono);font-size:22px;font-weight:500;line-height:1.3;margin-block:2px}
+.nat .d{font-size:13px;color:var(--muted)}
+
+/* outcomes layout */
+.layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:28px;align-items:start;padding-block:18px}
+.anav{position:sticky;top:calc(env(safe-area-inset-top,0px) + 64px);display:flex;flex-direction:column;gap:4px}
+.anav button{font:inherit;text-align:left;border:1px solid transparent;background:transparent;color:var(--ink);padding:9px 12px;border-radius:8px;cursor:pointer;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.anav button small{color:var(--muted);font-size:12px}
+.anav button:hover{background:var(--surface)}
+.anav button[aria-selected="true"]{background:var(--surface);border-color:var(--line);font-weight:700}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ac,var(--accent));flex:none}
+.anav .lbl{display:flex;gap:10px;align-items:center;min-width:0}
+
+.panel{display:grid;gap:22px;min-width:0}
+.ph{display:grid;gap:10px;padding-bottom:18px;border-bottom:2px solid var(--ac)}
+.ph .eyebrow{font-size:12px;letter-spacing:.1em;color:var(--ac);font-weight:700}
+.ph h2{font-size:clamp(24px,3.6vw,34px);font-weight:900}
+.ph .sum{max-width:66ch}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12.5px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:2px 10px;color:var(--ink)}
+.chip.trend-up{border-color:var(--good);color:var(--good)}
+.chip.trend-flat{border-color:var(--warn);color:var(--warn)}
+.chip.trend-down{border-color:var(--crit);color:var(--crit)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.stat .v{font-family:var(--mono);font-size:24px;font-weight:500;color:var(--ac);line-height:1.25}
+.stat .l{font-size:13px;color:var(--muted)}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;min-width:0}
+.card h3{font-size:17px;margin-bottom:10px}
+.card ul{margin:0;padding-left:1.1em;display:grid;gap:7px}
+.card li::marker{color:var(--ac)}
+.chart-card figcaption{font-size:13px;color:var(--muted);margin-top:8px}
+.chart-card svg{width:100%;height:auto;display:block;overflow:visible}
+.chart-card .ct{font-family:var(--serif);font-size:16px;font-weight:600;margin-bottom:6px}
+.tl{list-style:none;padding:0!important;margin:0;display:grid;gap:0!important}
+.tl li{display:grid;grid-template-columns:78px minmax(0,1fr);gap:12px;padding-block:8px;border-top:1px dashed var(--line)}
+.tl li:first-child{border-top:0}
+.tl .y{font-family:var(--mono);font-size:12.5px;color:var(--ac)}
+.src{font-size:12.5px;color:var(--muted)}
+.src summary{cursor:pointer;color:var(--muted)}
+.src ul{margin:8px 0 0;padding-left:1.1em;display:grid;gap:4px}
+.note{font-size:13px;color:var(--muted)}
+.callout{border:1px dashed var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:8px}
+.callout h3{font-size:16px}
+.callout ul{margin:0;padding-left:1.1em;display:grid;gap:4px}
+.grid-nat{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+
+/* volunteers */
+.vhead{padding-block:30px 8px;display:grid;gap:10px}
+.vhead h2{font-size:clamp(24px,4vw,36px);font-weight:900}
+.fbar{display:grid;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;margin-block:12px 16px}
+.fgroup{display:grid;gap:6px}
+.fgroup .fl{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.fgroup .opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{font:inherit;font-size:13.5px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:3px 12px;cursor:pointer}
+.opt[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.frow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.search{font:inherit;flex:1 1 220px;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:8px 12px}
+.reset{font:inherit;border:0;background:transparent;color:var(--accent);cursor:pointer;text-decoration:underline}
+.count{font-size:13px;color:var(--muted)}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+.vcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:10px;align-content:start;min-width:0}
+.vcard.ended{opacity:.72}
+.vcard h3{font-size:17px}
+.vcard .org{font-size:13px;color:var(--muted)}
+.vcard .meta{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;font-size:13.5px}
+.vcard .meta dt{color:var(--muted)}
+.vcard .meta dd{margin:0}
+.st{font-size:12px;font-weight:700;border-radius:4px;padding:1px 8px;border:1px solid currentColor}
+.st.open{color:var(--good)} .st.seasonal{color:var(--warn)} .st.irregular{color:var(--c-bird)} .st.ended{color:var(--muted)}
+.empty{border:1px dashed var(--line);border-radius:10px;padding:24px;text-align:center;color:var(--muted)}
+.howto{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-top:26px}
+footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);display:grid;gap:8px}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:14px}
+  .anav{position:static;flex-direction:row;overflow-x:auto;padding-bottom:6px;gap:6px}
+  .anav button{flex:none;border:1px solid var(--line);background:var(--surface);white-space:nowrap}
+  .anav button small{display:none}
+  .cols{grid-template-columns:minmax(0,1fr)}
+  .tl li{grid-template-columns:70px minmax(0,1fr)}
+}
+
+/* home / picker / community */
+.brand{color:var(--ink);text-decoration:none}
+.home-hero{padding-block:44px 22px;display:grid;gap:14px}
+.home-hero h1{font-size:clamp(32px,6vw,56px);font-weight:900;letter-spacing:.02em}
+.kicker{font-size:12px;letter-spacing:.14em;color:var(--accent);font-weight:700}
+.entries{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-block:8px 10px}
+.entry{display:grid;gap:8px;align-content:start;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--ac);border-radius:10px;padding:20px;color:var(--ink);text-decoration:none;transition:transform .15s,border-color .15s}
+.entry:hover{transform:translateY(-2px);border-color:var(--ac)}
+.entry h2{font-size:22px;font-weight:900}
+.entry p{color:var(--muted)}
+.entry .en{font-family:var(--mono);color:var(--ac);font-size:13px}
+.entry .go{color:var(--ac);font-weight:700}
+.sec{font-size:20px;font-weight:900;margin-block:28px 12px}
+.homechip{text-decoration:none;display:inline-flex;gap:7px;align-items:center;padding:5px 14px;font-size:14px}
+.homechip:hover{border-color:var(--ac)}
+.picker{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-top:10px}
+.picker .fl{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.pk{display:flex;flex-wrap:wrap;gap:6px}
+.tchip{font:inherit;font-size:13.5px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:3px 12px;cursor:pointer}
+.tchip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.allsec{display:grid;gap:22px;padding-bottom:34px;border-bottom:1px solid var(--line)}
+.allsec:last-child{border-bottom:0}
+.csub{display:flex;gap:6px;flex-wrap:wrap;margin-block:8px 0}
+.csec{margin-top:34px;display:grid;gap:14px}
+.csec h3.t{font-size:22px;font-weight:900}
+.docs{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:grid;align-content:start;min-width:0}
+.thumb{aspect-ratio:16/9;background:linear-gradient(135deg,var(--accent-soft),var(--bg));display:grid;place-items:center}
+.thumb i{width:0;height:0;border-left:22px solid var(--accent);border-block:14px solid transparent;margin-left:6px}
+.doc .db{padding:14px 16px;display:grid;gap:8px}
+.doc h4{font:900 17px/1.4 var(--serif);margin:0}
+.form{display:grid;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.field{display:grid;gap:4px}
+.field label{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.field input,.field select,.field textarea{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:8px 12px;min-width:0;width:100%}
+.field textarea{min-height:110px;resize:vertical}
+.row2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.btn{font:inherit;font-weight:700;border:0;background:var(--accent);color:var(--on-accent);border-radius:999px;padding:8px 22px;cursor:pointer;justify-self:start}
+.ok{color:var(--good);font-size:14px}
+.stories{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.story{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:8px;align-content:start;min-width:0}
+.story p{white-space:pre-wrap;overflow-wrap:anywhere}
+select,textarea,input{color-scheme:inherit}
+
+/* game */
+.gbox{max-width:680px;display:grid;gap:14px;margin-top:8px}
+.ghead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.ghead b{color:var(--ink);font-family:var(--mono)}
+.gbar{height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+.gbar i{display:block;height:100%;width:100%;background:var(--accent);transition:width .25s linear}
+.gq{font:900 21px/1.5 var(--serif);margin:0}
+.gopts{display:grid;gap:8px}
+.gopt{font:inherit;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:12px 16px;cursor:pointer}
+.gopt:hover:not(:disabled){border-color:var(--accent)}
+.gopt:disabled{cursor:default}
+.gopt.good{border-color:var(--good,#1f8a73);background:var(--accent-soft)}
+.gopt.bad{border-color:var(--bad,#c0392b);opacity:.75}
+.gbig{font:900 56px/1 var(--mono);color:var(--accent)}
+.gcenter{display:grid;gap:12px;justify-items:start;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:22px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+<header class="top"><div class="wrap">
+  <a class="brand" href="#home">台灣保育行動地圖</a>
+  <div class="tabs" role="tablist" aria-label="內容面向">
+    <button role="tab" id="tab-home" aria-selected="false" aria-controls="view-home" data-view="home">首頁</button>
+    <button role="tab" id="tab-outcomes" aria-selected="false" aria-controls="view-outcomes" data-view="outcomes">計畫與成效</button>
+    <button role="tab" id="tab-volunteer" aria-selected="false" aria-controls="view-volunteer" data-view="volunteer">志工活動</button>
+    <button role="tab" id="tab-game" aria-selected="false" aria-controls="view-game" data-view="game">保育挑戰</button>
+    <button role="tab" id="tab-community" aria-selected="false" aria-controls="view-community" data-view="community">社群專區</button>
+  </div>
+</div></header>
+
+<main class="wrap">
+<section id="view-home" hidden>
+  <div class="home-hero">
+    <span class="kicker">TAIWAN CONSERVATION</span>
+    <h1>台灣保育行動地圖</h1>
+    <p class="lede" style="max-width:60ch;color:var(--muted)">從黑熊、石虎到白海豚,看台灣的保育計畫做了什麼、數字怎麼變;也找到你可以動手參與的方式,並和其他關心這片土地的人交流。</p>
+    <p class="asof">資料整理於 2026-10-30</p>
+  </div>
+  <div class="entries">
+    <a class="entry" href="#outcomes" style="--ac:var(--c-turtle)"><span class="en">01</span><h2>計畫與成效</h2><p>依動物類別整理保育計畫與可查證的數字。你可以自己選要看哪些資訊。</p><span class="go">進入 →</span></a>
+    <a class="entry" href="#volunteer" style="--ac:var(--c-bird)"><span class="en">02</span><h2>志工活動</h2><p>依動物、方式、地區篩選,找到適合你的保育志工與公民科學。</p><span class="go">進入 →</span></a>
+    <a class="entry" href="#community" style="--ac:var(--c-fish)"><span class="en">04</span><h2>社群專區</h2><p>站長親身參與的紀錄片、大家的經驗分享,以及意見箱。</p><span class="go">進入 →</span></a>
+  <a class="entry" href="#game" style="--ac:var(--c-pang)"><span class="en">03</span><h2>保育挑戰</h2><p>用「計畫與成效」的資料玩問答,累積積分,看看你認識多少台灣保育。</p><span class="go">開始玩 →</span></a>
+  </div>
+  <h2 class="sec">一眼看台灣</h2>
+  <div class="nat" id="nat"></div>
+  <h2 class="sec">從你關心的動物開始</h2>
+  <div class="chips" id="homeAnimals"></div>
+</section>
+
+<section id="view-outcomes" role="tabpanel" aria-labelledby="tab-outcomes" hidden>
+  <div class="hero">
+    <h1>誰在回來,誰還在危險中</h1>
+    <p class="lede">依動物類別整理台灣目前的保育計畫與可查證的成效數字。用下方按鈕選擇想看的資訊類型;選「全部物種」可以把同一類資訊並排比較。</p>
+    <p class="asof">資料整理於 2026-10-30,數字多取自林業保育署、海洋保育署與各單位公開資料及新聞報導。</p>
+  </div>
+  <div class="picker" role="group" aria-label="選擇想看的資訊類型"><span class="fl">我想看</span><div class="pk" id="pk"></div><button class="reset" id="pkAll" type="button">全選</button><button class="reset" id="pkNone" type="button">清除</button></div>
+  <div class="layout">
+    <nav class="anav" id="anav" aria-label="動物類別"></nav>
+    <article class="panel" id="panel" aria-live="polite"></article>
+  </div>
+  <div class="grid-nat" id="policies" style="margin-top:8px"></div>
+</section>
+
+<section id="view-volunteer" role="tabpanel" aria-labelledby="tab-volunteer" hidden>
+  <div class="vhead">
+    <h2>想動手幫忙,可以從這裡開始</h2>
+    <p class="lede" style="max-width:62ch;color:var(--muted)">整理目前找得到的保育志工、公民科學與參與活動。用條件篩選,預設只顯示仍可參與的項目。報名資格與時間以主辦單位公告為準。</p>
+  </div>
+  <div class="fbar">
+    <div class="frow">
+      <input class="search" id="q" type="search" placeholder="搜尋關鍵字,例如 淨灘、鳥、國家公園" aria-label="搜尋志工活動">
+      <span class="count" id="vcount"></span>
+    </div>
+    <div class="fgroup"><span class="fl">關心的動物</span><div class="opts" id="f-animal"></div></div>
+    <div class="fgroup"><span class="fl">參與方式</span><div class="opts" id="f-type"></div></div>
+    <div class="fgroup"><span class="fl">投入程度</span><div class="opts" id="f-commit"></div></div>
+    <div class="fgroup"><span class="fl">需要的經驗</span><div class="opts" id="f-skill"></div></div>
+    <div class="fgroup"><span class="fl">地區</span><div class="opts" id="f-region"></div></div>
+    <div class="frow">
+      <label class="count"><input type="checkbox" id="f-ended"> 也顯示已結束或已截止的項目</label>
+      <button class="reset" id="reset" type="button">清除篩選</button>
+    </div>
+  </div>
+  <div class="vgrid" id="vgrid"></div>
+  <div class="howto" id="howto"></div>
+</section>
+
+<section id="view-game" role="tabpanel" aria-labelledby="tab-game" hidden>
+  <div class="vhead"><h2>保育挑戰</h2>
+    <p class="lede" style="max-width:62ch;color:var(--muted)">題目都出自「計畫與成效」頁的資料。每回 10 題,每題 15 秒。答對得分,答得快、連續答對有加成。</p></div>
+  <div class="gbox" id="gbox" aria-live="polite"></div>
+</section>
+
+<section id="view-community" role="tabpanel" aria-labelledby="tab-community" hidden>
+  <div class="vhead">
+    <h2>社群專區</h2>
+    <p class="lede" style="max-width:62ch;color:var(--muted)">這裡放站長親身參與保育活動的紀錄片、大家的參與經驗,以及給網站的意見。</p>
+    <div class="csub"><button class="tchip" type="button" data-jump="c-docs">紀錄片</button><button class="tchip" type="button" data-jump="c-stories">經驗分享</button><button class="tchip" type="button" data-jump="c-feedback">意見箱</button></div>
+  </div>
+  <div class="csec" id="c-docs"><h3 class="t">站長的親身紀錄</h3><p class="note">這些是站長實際參與保育活動時拍攝的紀錄片。</p><div class="docs" id="docs"></div></div>
+  <div class="csec" id="c-stories"><h3 class="t">使用者經驗分享</h3>
+    <p class="note">參與過志工、淨灘、賞鳥或救援?寫下你的經驗,讓更多人知道怎麼開始。目前為展示版:送出的內容只會保存在你這台裝置的瀏覽器,其他訪客看不到。</p>
+    <form class="form" id="storyForm">
+      <div class="row2"><div class="field"><label for="sn">暱稱</label><input id="sn" maxlength="20" required placeholder="例如 小林"></div>
+      <div class="field"><label for="st">主題</label><select id="st"></select></div></div>
+      <div class="field"><label for="sx">你的經驗(600 字內)</label><textarea id="sx" maxlength="600" required placeholder="參加了什麼活動?印象最深的是什麼?給新手的建議?"></textarea></div>
+      <button class="btn" type="submit">分享我的經驗</button><span class="ok" id="storyOk" hidden>已送出,謝謝你的分享。</span>
+    </form>
+    <div class="stories" id="stories"></div>
+  </div>
+  <div class="csec" id="c-feedback"><h3 class="t">意見箱</h3>
+    <p class="note">資料有誤、志工資訊過期,或想看到新的功能,都歡迎告訴我們。</p>
+    <form class="form" id="fbForm">
+      <div class="row2"><div class="field"><label for="fc">意見類型</label><select id="fc"><option>資料或數字有誤</option><option>志工資訊更新</option><option>功能建議</option><option>其他</option></select></div>
+      <div class="field"><label for="fk">聯絡方式(選填)</label><input id="fk" maxlength="80" placeholder="Email 或社群帳號,方便回覆你"></div></div>
+      <div class="field"><label for="ft">內容</label><textarea id="ft" maxlength="800" required placeholder="請描述你的發現或想法"></textarea></div>
+      <button class="btn" type="submit">送出意見</button><span class="ok" id="fbOk" hidden>已收到,謝謝你的意見。</span>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <p class="note">這份整理由公開報導與官方文件彙整而成,不代表任何機關立場。各項估計數字(例如黑熊約 1,200 隻、石虎約 500 隻)會隨新調查調整,引用前請對照來源。發現志工資訊過期,請以主辦單位最新公告為準。</p>
+</footer>
+</main>
+<script>
+const NATIONAL = [
+  {k:"國有林森林覆蓋", v:"142.9 萬公頃", d:"2025 年,比 2015 年增加約 2.2 萬公頃(林保署)"},
+  {k:"國土生態綠網", v:"45 條保育軸帶", d:"全臺已指認的區域保育軸帶,串連棲地與社區"},
+  {k:"黑面琵鷺全球普查", v:"4,719 隻", d:"2026 年台灣記錄,占全球 7,746 隻的約 61%"},
+  {k:"海洋擱淺救援網", v:"5,000+ 起", d:"2019 年成立至 2025 年 3 月累計處理的鯨豚與海龜擱淺案件"}
+];
+
+const POLICIES = [
+  {t:"生態服務給付", b:"給願意配合保育的農漁民固定獎勵金。已用在石虎友善農地、黑熊部落巡守、黑面琵鷺友善魚塭。2019 年南投中寮試辦,後續擴大。"},
+  {t:"保育共生地認證", b:"2025 年 6 月公布的方案,針對私有土地的生物多樣性保護,配合全球 30x30 的方向。"},
+  {t:"路殺預警與生態廊道", b:"台 3 線卓蘭路段試行 AI 辨識的路殺預警系統。路殺社也在測試以 AI 預測熱點,先從穿山甲開始。據該網絡估計,每年涉及中大型哺乳類的撞擊可能達 50 萬至 100 萬件,多數未被通報。"},
+  {t:"地方立法", b:"彰化縣議會三讀通過《彰化縣石虎保育自治條例》,是中部第一個制定石虎保育自治法規的縣市。"}
+];
+
+const ANIMALS = [
+{
+ id:"bear", name:"台灣黑熊", short:"黑熊", color:"--c-bear", eyebrow:"陸域 · 大型哺乳類",
+ status:[{t:"瀕臨絕種(保育法一級)"},{t:"族群回升",trend:"up"},{t:"人熊衝突增加",trend:"down"}],
+ sum:"族群與活動範圍都在擴大,森林恢復是主因。新的難題是熊走到低海拔、靠近雞舍與工寮後,人與熊的衝突變多。",
+ stats:[
+  {v:"約 1,200 隻",l:"林保署 2026 年 3 月初步估計,年底前預計公布更精確數字"},
+  {v:"200–600 隻",l:"十多年前學者的評估範圍"},
+  {v:"17 → 27 鄉鎮",l:"有活動紀錄的鄉鎮數,2011–2017 年對比 2018 年之後"}
+ ],
+ chart:{kind:"bar",title:"人熊衝突通報件數",cats:["2023","2025"],series:[{name:"件",values:[27,15]}],labels:["27","15"],cap:"十多年前每年通常低於 5 件。2023 年因闖入山屋、農地、工寮或誤觸陷阱增為 27 件。不同報導的統計口徑略有出入。"},
+ actions:[
+  "黑熊生態服務給付:給農民、林農、畜禽飼養戶獎勵金,換取防護與通報。",
+  "部落巡守隊:桃園的巴陵、爺亨、哈凱、凱維蘭、雪霧鬧等部落已成立巡守隊,協助監測與巡護。",
+  "回收違規占用的國有林地並造林,棲地面積增加。",
+  "救傷與野放;無法野放的個體長期照養。台東長期收容中心規劃 2028 年完工,在那之前由台北動物園等單位照養。",
+  "國家公園推動黑熊庇護網絡,2026 年 1–7 月辦理 30 年成果特展。"
+ ],
+ timeline:[["2025/04","桃園復興哈凱部落首度主動通報黑熊,創下 2000 年以來最北的正式紀錄。"],["2025/04","花蓮卓溪一隻熊在衝突中遭巡守隊開槍,事後獸醫人道處理。"],["2025/05","林保署整理 2011–2025 年共 2,034 筆資料,確認族群穩定增長並向低海拔擴散。"],["2026/01","卓溪一隻反覆闖入雞舍的公熊被永久安置於台北動物園。"],["2026/03","初步估計約 1,200 隻。"],["2028","台東長期收容中心預計完工。"]],
+ gaps:["衝突個體的處置:驅離、野放與長期收容的空間都不足。","蜂場、雞舍等食物來源需要更多防護設施。","族群估計仍是初步數字,要等後續調查修正。"],
+ sources:[["中央社:黑熊從可愛動物變害獸","https://www.cna.com.tw/newsworld/article/20260624n001/"],["Focus Taiwan:黑熊族群估約 1,200 隻","https://ocacnews.net/article/422917"],["Focus Taiwan:新估計與衝突件數","https://focustaiwan.tw/society/202603230020"],["聯合報:林保署公布最新族群分布","https://udn.com/news/story/7470/8743775"],["公視:人熊新關係","https://news.pts.org.tw/article/752483"],["NOWnews:桃園哈凱部落通報","https://www.nownews.com/news/6668873"],["Taiwan News:長期收容中心規劃","https://www.taiwannews.com.tw/en/news/6326061"]]
+},
+{
+ id:"cat", name:"石虎", short:"石虎", color:"--c-cat", eyebrow:"陸域 · 台灣唯一現生原生貓科",
+ status:[{t:"瀕臨絕種(保育法一級)"},{t:"小幅擴散,仍極稀少",trend:"flat"}],
+ sum:"全台約剩 500 隻,集中在苗栗、台中、南投的淺山。保育重點從單純禁獵,轉向和農民一起守棲地、化解雞舍衝突。",
+ stats:[
+  {v:"約 500 隻",l:"全台估計,過去曾估 400–600 隻"},
+  {v:"192 人 / 年",l:"南投友善農地給付的年參與人數(截至 2024),平均約 199 公頃"},
+  {v:"40 位農友",l:"台中已取得「友善石虎農作標章」"}
+ ],
+ chart:{kind:"bar",title:"雲林林內、古坑的石虎相機紀錄",cats:["2019–2023 累計","2024","2025 年 1 月"],series:[{name:"筆",values:[12,16,3]}],labels:["12","16","3"],cap:"雲林 1988 年首度發現石虎後 30 年沒有紀錄,2019 年再度拍到。南投分署認為族群沿濁水溪床往南移動。"},
+ actions:[
+  "友善石虎生態服務給付:2019 年在南投中寮試辦農地、巡護、禽舍三種給付,2021 年正式推動。",
+  "《石虎保育行動計畫》第二版:2025 年 6 月由林保署與生物多樣性研究所發布。",
+  "雞舍改造:加裝防護網、清除可攀爬的枝條,減少石虎進雞舍與遭毒殺、獸鋏。",
+  "路殺對策:警示牌、減速設施、台 3 線路殺預警系統,並盤點熱點。",
+  "全基因體研究,釐清野放與野生個體的親緣,評估近親繁殖。"
+ ],
+ timeline:[["2008","石虎由二級調升為一級瀕臨絕種。"],["2019","南投中寮試辦給付;雲林林內拍到 30 年來首筆紀錄。"],["2024/11","台中和平斯可巴社區首次拍到石虎。"],["2025/04","苗栗南庄、新竹橫山拍到石虎,分布向東北延伸。"],["2025/06","行動計畫第二版發布。"],["2026/01","彰化和美出現年度首起路殺,地點偏海線。"]],
+ gaps:["路殺:2011 年至 2019 年 1 月全台有 75 筆石虎路殺紀錄,苗 140 線等熱點仍反覆發生。","農藥、獸鋏、毒餌與遊蕩貓犬的競爭與傳染病。","族群分成苗栗、台中、南投三群,遺傳交流受高速公路與海拔限制。"],
+ sources:[["石虎保育行動計畫(第二版)","https://conservation.forest.gov.tw/File.aspx?fno=91298"],["林務局:守住石虎生機,農村巡守與社區力量","https://www.forest.gov.tw/MagazineFile/7413"],["NOWnews:台中友善石虎農作標章","https://www.nownews.com/news/6812005"],["雲林林內石虎紀錄","https://tw.news.yahoo.com/%E9%9B%B2%E6%9E%97-%E7%9F%B3%E8%99%8E%E9%A0%BB%E7%8F%BE%E8%B9%A4-%E6%9E%97%E5%85%A7%E9%84%89%E5%A2%9E%E8%A8%AD4%E7%9B%A3%E6%B8%AC%E5%84%80-201000762.html"],["新竹分署:南庄、橫山拍到石虎","https://newtalk.tw/news/view/2025-04-18/966209"],["公視:大甲溪斯可巴首見石虎","https://news.pts.org.tw/article/747093"],["關鍵評論網:石虎國有地認養與路殺紀錄","https://www.thenewslens.com/article/129315"]]
+},
+{
+ id:"pangolin", name:"穿山甲", short:"穿山甲", color:"--c-pang", eyebrow:"陸域 · 淺山夜行性哺乳類",
+ status:[{t:"珍貴稀有(保育法二級)"},{t:"族群趨穩",trend:"flat"}],
+ sum:"台灣是全球少數穿山甲族群穩定恢復的地方。盜獵壓力已被遏止,現在最大的威脅是遊蕩犬與淺山開發。",
+ stats:[
+  {v:"約 15,000 隻",l:"2019 年調查的估計"},
+  {v:"12.8 隻 / 100 公頃",l:"台東鸞山地區的族群密度"},
+  {v:"2 座動物園",l:"台北動物園送往德國萊比錫、捷克布拉格,建立域外族群"}
+ ],
+ chart:null,
+ actions:[
+  "《臺灣穿山甲保育行動計畫》:屏科大孫敬閔團隊依此推動研究與社區保育。",
+  "社區通報機制加無線電追蹤:掌握活動範圍、族群數量與繁殖,高雄內門馬頭山社區 2022 年起合作。",
+  "把熟悉山林的獵人納入救傷與監測網絡,2026 年 9 月在屏東來義鄉辦首場宣導。",
+  "推廣改良式獵具,降低獸鋏造成的傷害。",
+  "孫敬閔自 2022 年起擔任 IUCN 穿山甲專家群東亞區主席,把社區協力模式帶到東南亞。"
+ ],
+ timeline:[["2019","全台族群調查,估約 1 萬 5 千隻。"],["2022","屏科大與高雄馬頭山自然人文協會開始合作。"],["2025/05","國科會、農業部、屏科大公布公私協力的研究成果。"],["2026/09","屏東來義鄉獵人納入救傷網絡。"]],
+ gaps:["傷害來源從獸鋏轉為遊蕩犬,母獸尾巴受傷會影響育幼。","網具纏繞:台南龍崎有野放個體死於雞舍網具。","淺山開發與棲地破碎。據路殺社,穿山甲是路殺熱點預測的首批對象。"],
+ sources:[["遠見:屏科大打造全球穿山甲保育典範","https://www.gvm.com.tw/article/130165"],["中央社:國科會、農業部、屏科大合作","https://www.cna.com.tw/news/ahel/202505220371.aspx"],["公視:穿山甲闖入台東超商","https://news.pts.org.tw/article/681332"],["中央社:來義獵人納入救傷網絡","https://cna.com.tw/news/aloc/202609300197.aspx"],["公視:台南龍崎穿山甲遭網具纏繞","https://news.pts.org.tw/article/720449"]]
+}
+,
+{
+ id:"bird", name:"鳥類(黑面琵鷺)", short:"鳥類", color:"--c-bird", eyebrow:"濕地 · 候鳥與公民科學",
+ status:[{t:"一級瀕臨絕種(台灣法定)"},{t:"IUCN 2025 年由瀕危調降為易危"},{t:"數量創新高",trend:"up"}],
+ sum:"全球約六成的黑面琵鷺在台灣過冬。數量從 1990 年代不到 300 隻回升到近 7,700 隻,但棲地接近飽和,保育轉向把魚塭變成友善棲地。",
+ stats:[
+  {v:"4,719 隻",l:"2026 年 1 月台灣普查記錄,歷年新高,比 2025 年多 550 隻"},
+  {v:"7,746 隻",l:"2026 年全球普查總數,比去年成長 11.1%"},
+  {v:"822,365 筆",l:"繁殖鳥類大調查 2009–2022 年累計記錄,來自 638 個樣區"}
+ ],
+ chart:{kind:"line",title:"黑面琵鷺全球同步普查",cats:["2023","2024","2025","2026"],series:[{name:"全球",values:[6603,6988,7081,7746]},{name:"台灣",values:[4228,4135,4169,4719]}],cap:"每年 1 月同步普查。台灣 2024 至 2025 年成長趨緩,2026 年明顯回升。"},
+ actions:[
+  "全球同步普查:香港觀鳥會統籌,台灣由野鳥學會執行,百位以上調查員參與。",
+  "友善魚塭生態服務給付:2021 年起,魚塭收成後在 10 月至隔年 4 月維持淺水超過 1 個月,每公頃最高 1 萬元。台南 2024 年有 181 公頃參與。",
+  "台灣繁殖鳥類大調查(2009 起):公民科學家認養樣區,建立森林鳥類與農地鳥類指標。",
+  "eBird Taiwan:2015 年上線,累計 138 萬份紀錄清單,貢獻度全球第 7。",
+  "台南野鳥學會與生物多樣性研究所共同救傷。"
+ ],
+ timeline:[["1990s","族群一度低於 300 隻。"],["1992","列為一級瀕臨絕種保育類。"],["2021","友善魚塭生態服務給付開始。"],["2023","台灣首次破 4,000 隻,記錄 4,228 隻。"],["2025","IUCN 受脅等級調降。"],["2026/01","台灣 4,719 隻,全球 7,746 隻,皆為新高。"]],
+ gaps:["棲地飽和,度冬範圍向彰化、澎湖、屏東等地擴散。","肉毒桿菌中毒:2023–2024 年累計救援 86 隻,25 隻經救治後野放。氣候極端會提高風險。","繁殖鳥類大調查顯示台灣朱雀、烏頭翁等保育類鳥種數量顯著下降,外來的灰頭椋鳥則持續增加。"],
+ sources:[["公視:黑面琵鷺數量創新高","https://news.pts.org.tw/article/804499"],["林保署:2025 年全球同步普查","https://newtalk.tw/news/view/2025-04-11/964952"],["NOWnews:2024 年普查與肉毒桿菌","https://www.nownews.com/news/6413293"],["NOWnews:2023 年普查","https://www.nownews.com/news/6118169"],["繁殖鳥類大調查資料集(GBIF)","https://demo.gbif.org/dataset/f170f056-3f8a-4ef3-ac9f-4503cc854ce0"],["TechNews:eBird Taiwan 十年","https://technews.tw/2025/11/04/ebird-taiwan-10-years/"],["特生中心:繁殖鳥類大調查趨勢","https://www.taiwannews.com.tw/zh/news/4321061"]]
+},
+{
+ id:"dolphin", name:"台灣白海豚", short:"白海豚", color:"--c-dolphin", eyebrow:"海洋 · 西海岸鯨豚",
+ status:[{t:"台灣族群 IUCN 極危"},{t:"約 47–50 隻",trend:"down"}],
+ sum:"全台約剩 50 隻,最危急的一類。保育工作靠漁民目擊回報、棲地保護與開發案審查,目前沒有明確回升的數據。",
+ stats:[
+  {v:"約 47 隻",l:"2026 年環團與媒體引用的族群數,海保署曾公布約 50 隻"},
+  {v:"280 位漁民",l:"加入「白海豚目擊回報」LINE 群組(2024)"},
+  {v:"110 筆",l:"2024 年漁民回報目擊,其中 5 筆含幼豚群"}
+ ],
+ chart:{kind:"bar",title:"有效目擊白海豚群次",cats:["2019","2020","2022","2023"],series:[{name:"群次",values:[18,18,13,20]}],labels:["18","18","13","20"],cap:"海保署資料。2021 年未取得數字。群次反映調查努力量,不等於族群數。"},
+ actions:[
+  "海保署與台灣蠻野心足生態協會合作建立漁民目擊回報,並鼓勵漁民減速避讓。",
+  "推動以白海豚保育為核心的「藍色經濟」,例如在地導覽與表揚活動。",
+  "研究離岸風電水下噪音與重要棲息環境。",
+  "公民告知:2026 年 7 月環團就台中港南填方區工程向環境部提出公民告知書。"
+ ],
+ timeline:[["2019–2023","有效目擊群次在 13–20 之間波動。"],["2024","漁民回報群組累計 110 筆目擊。"],["2026/02","彰化外海拍到白海豚躍出水面。"],["2026/07","環團指台中港填海工程規避環評,港務公司否認。"]],
+ gaps:["離岸風電施工與營運噪音可能干擾聽力與覓食。","港灣與填海開發壓縮棲地。","專家警告若不積極保育,數年內可能走向滅絕。"],
+ sources:[["公視:漁民化身白海豚保育推手","https://news.pts.org.tw/article/721668"],["NOWnews:白海豚拉警報","https://www.nownews.com/news/6708176"]]
+},
+{
+ id:"marine", name:"海龜與鯨豚救援", short:"海龜鯨豚", color:"--c-turtle", eyebrow:"海洋 · 擱淺救援與產卵地",
+ status:[{t:"救援網運作中"},{t:"太平島為最大產卵地",trend:"up"}],
+ sum:"2019 年起由海保署串連政府、救援團體與海巡,建立擱淺救援網。擱淺個體多半已死亡,救回來的比例仍低,但資料已能用來找出威脅。",
+ stats:[
+  {v:"325 起",l:"2024 年海龜擱淺通報,88 隻為活體"},
+  {v:"159 起",l:"2024 年鯨豚擱淺通報,24 隻為活體"},
+  {v:"221 窩",l:"2024 年太平島記錄的綠蠵龜卵窩,來自 141 隻母龜"}
+ ],
+ chart:{kind:"group",title:"2024 年擱淺通報",cats:["海龜","鯨豚"],series:[{name:"死亡",values:[237,135]},{name:"活體",values:[88,24]}],cap:"死亡指發現時已死亡。2024 年成功野放 34 隻海龜與 8 隻鯨豚,另有 19 隻海龜持續照護。"},
+ actions:[
+  "海洋保育類野生動物救援組織網:至 2025 年 3 月累計處理超過 5,000 起,野放 31 隻鯨豚與 197 隻海龜。",
+  "為產卵母龜與傷癒海龜裝衛星發報器,追蹤洄游與覓食區。",
+  "海洋保育在地守護計畫:2020 年起至 2024 年底有 104 個團體參與,辦理 3,108 場公民科學家調查。",
+  "燕鷗繁殖期守護行動:多語言海報提醒不干擾鳥巢。"
+ ],
+ timeline:[["2019","擱淺救援網成立。"],["2023","澎湖望安一隻母綠蠵龜 28 年來約 12 次返回原地產卵。"],["2024","太平島首度被系統性調查,產卵數為全國之冠。"],["2025/03","累計野放 31 隻鯨豚、197 隻海龜。"]],
+ gaps:["廢棄漁網纏繞是主要傷因。澎湖傷病龜中心自 1997 年收容的 16 隻欖蠵龜都因漁網受困。","民眾自行把擱淺鯨豚推回海中,常導致嗆傷而死亡。","綠色和平調查指沿岸漁獲幼魚占比由 2023 年的 77.7% 升至 2025 年的 93.3%;漁業署回應近五年沿岸漁獲穩定約 17 萬公噸。"],
+ sources:[["NOWnews:2024 擱淺統計","https://www.nownews.com/news/6653847"],["海保署:救援網累計成果","https://e-creative.media/?p=80668"],["聯合報:太平島產卵數全國之冠","https://udn.com/news/story/7470/8552925"],["公視:望安綠蠵龜 28 年返鄉","https://news.pts.org.tw/article/650979"],["聯合報:海洋保育在地守護計畫","https://udn.com/news/story/7266/8996252"],["Focus Taiwan:沿岸漁獲與拖網","https://focustaiwan.tw/society/202606100007"]]
+},
+{
+ id:"fish", name:"櫻花鉤吻鮭", short:"國寶魚", color:"--c-fish", eyebrow:"淡水 · 冰河孓遺的陸封鮭",
+ status:[{t:"珍貴稀有(保育法二級)"},{t:"野外可自然繁殖",trend:"up"}],
+ sum:"1980 年代只剩 200 多尾,經雪霸國家公園三十多年復育,野外已超過 1.6 萬尾,並建立數條衛星族群溪流。",
+ stats:[
+  {v:"16,020 尾",l:"2025 年統計的野生族群,歷史第 3 高"},
+  {v:"200 多尾",l:"1980 年代七家灣溪的族群"},
+  {v:"> 15,000 尾",l:"近五年普查維持的規模"}
+ ],
+ chart:{kind:"bar",title:"野生櫻花鉤吻鮭數量",cats:["1980 年代","2019","2025"],series:[{name:"尾",values:[200,10000,16020]}],labels:["約 200","逾 10,000","16,020"],cap:"1980 年代與 2019 年為概數(「200 多尾」「破萬尾」),2025 年為雪管處統計。"},
+ actions:[
+  "就地保育與移地保育並行:七家灣溪保種,另建立合歡溪、羅葉尾溪、司界蘭溪等衛星族群。",
+  "2025 年 9 月首次以直升機吊掛魚苗到司界蘭溪上游放流,補齊歷史流域棲地最後一塊拼圖。",
+  "回收廢耕地約 8.1 公頃造林,穩定溪流水溫與水文。",
+  "合歡溪流域有居民成立國寶魚巡守隊;雪霸處規劃「國寶魚生態體驗教室」。",
+  "保育志工協助放流與水下目視估算。"
+ ],
+ timeline:[["1984","公告為珍貴稀有動物。"],["1992","雪霸國家公園成立,積極復育。"],["1997","劃設櫻花鉤吻鮭野生動物保護區。"],["2025/09","直升機護送魚苗放流。"],["2026/02","七家灣溪拍到剛孵化的鮭魚幼魚,顯示可自行繁衍。"]],
+ gaps:["颱風洪水與乾旱可能造成跨齡級死亡。","基因多樣性偏低,學者建議增加不同溪流的族群交流。","七家灣溪已接近承載量,需要更多可居住的溪段。"],
+ sources:[["中國時報:雪管處 2025 年統計","https://wantrich.chinatimes.com/news/20260107900165-420501"],["民視英語新聞:七家灣溪鮭魚寶寶","https://english.ftvnews.com.tw/news/2026406W09EA"],["公視:野外數量破萬","https://news.pts.org.tw/article/472098"],["林務局:櫻花鉤吻鮭保育專輯","https://conservation.forest.gov.tw/File.aspx?fno=65417"]]
+}
+];
+const STATUS = {open:"常態開放", seasonal:"季節性", irregular:"不定期招訓", ended:"已結束"};
+const VOL = [
+{id:"roadkill", name:"路殺社:回報路死動物", org:"台灣動物路死觀察網(特生中心發起)", animals:["any","石虎","穿山甲"], type:"公民科學調查", commit:"隨手可做", skill:"無需經驗", region:"全台", status:"open",
+ when:"隨時。看到路上或路邊的死亡動物就能回報",
+ desc:"拍照後上傳官網回報系統,專家協助辨識物種與死因。情況許可時,也可冷凍宅配遺體給特生中心做標本。社員約 2.7 萬人,每年累積超過 2 萬筆紀錄。",
+ how:"到官網了解參與指南與回報方式。安全第一,不要在車道上撿拾。", link:"https://roadkill.tw", linkText:"roadkill.tw"},
+{id:"roadkill2", name:"路殺社 2.0:系統化路殺調查", org:"台灣動物路死觀察網", animals:["any"], type:"公民科學調查", commit:"長期排班", skill:"需受訓", region:"全台", status:"irregular",
+ when:"依官網公告開放公測與招募",
+ desc:"在原本隨機回報之外,增加以固定路段、固定方法記錄的系統化取樣,讓資料能做趨勢比較。",
+ how:"關注官網最新消息。", link:"https://roadkill.tw/news/65178", linkText:"官網公告"},
+{id:"bbs", name:"臺灣繁殖鳥類大調查(BBS Taiwan)", org:"生物多樣性研究所、中華民國野鳥學會等", animals:["鳥類"], type:"公民科學調查", commit:"長期排班", skill:"需專業能力", region:"全台", status:"seasonal",
+ when:"每年 3–6 月進行樣區調查",
+ desc:"2009 年起的全國性監測。調查者認養樣區,依固定時間與方法數鳥,資料用來建立森林鳥類、農地鳥類指標。需要具備鳥類辨識能力。",
+ how:"向野鳥學會或各地鳥會洽詢認養樣區。", link:"https://www.bird.org.tw", linkText:"中華民國野鳥學會"},
+{id:"ebird", name:"eBird Taiwan 與台灣鳥類地圖", org:"生物多樣性研究所、中華民國野鳥學會", animals:["鳥類"], type:"公民科學調查", commit:"隨手可做", skill:"無需經驗", region:"全台", status:"open",
+ when:"隨時。用手機記錄賞鳥清單",
+ desc:"eBird Taiwan 用戶已破萬人。台灣鳥類地圖計畫邀集賞鳥者依格網提交清單,補齊全國分布資料。",
+ how:"註冊 eBird 後上傳清單,或關注台灣鳥類地圖入口網。", link:"https://www.bird.org.tw/news/4245", linkText:"台灣鳥類地圖介紹"},
+{id:"spoonbill", name:"黑面琵鷺全球同步普查", org:"中華民國野鳥學會與各地鳥會", animals:["鳥類"], type:"公民科學調查", commit:"單次或短期", skill:"需專業能力", region:"南部", status:"seasonal",
+ when:"每年 1 月中下旬的普查週末",
+ desc:"全台有百位以上調查員同步清點度冬族群。需要能辨識水鳥的經驗,通常由當地鳥會召集。",
+ how:"聯絡各地鳥會,明年 1 月前報名。", link:"https://www.bird.org.tw", linkText:"中華民國野鳥學會"},
+{id:"crab", name:"護蟹志工(台江有喜 x 作伙護蟹)", org:"內政部國家公園署台江國家公園管理處", animals:["陸蟹"], type:"現場救援與棲地", commit:"單次或短期", skill:"需受訓", region:"南部", status:"seasonal",
+ when:"2026 年 6–11 月,新月與滿月之後的夜晚",
+ desc:"曾文溪口南岸夢幻湖一帶,兇狠圓軸蟹媽媽會穿越馬路到海邊釋放幼體。志工協助降低人為捕捉與路殺風險,並做公民科學記錄。",
+ how:"2026 年度已招募培訓,明年請留意台江處公告。", link:"https://www.taiwan.nps.gov.tw/upload/cmNormalFile/2026-04-23/30de60fc-3610-4463-a0b3-a4663dca93bd/115年護蟹志工招募暨培訓計畫書.pdf", linkText:"2026 年計畫書(PDF)"},
+{id:"tjseason", name:"台江黑琵季系列活動", org:"台江國家公園管理處", animals:["鳥類"], type:"解說與教育", commit:"單次或短期", skill:"無需經驗", region:"南部", status:"seasonal",
+ when:"每年秋冬黑面琵鷺度冬期間",
+ desc:"賞鳥、濕地探索與環境教育活動,2026 年開幕活動移到台南市區商圈舉辦。可當作認識棲地的入門,也有保育團體設攤。",
+ how:"報名資訊見台江國家公園網站。", link:"https://www.tjnp.gov.tw", linkText:"台江國家公園網站"},
+{id:"npsvol", name:"國家公園保育與解說志工", org:"各國家公園管理處(陽明山、玉山、墾丁、太魯閣、雪霸、台江等)", animals:["any"], type:"解說與教育", commit:"長期排班", skill:"需受訓", region:"全台", status:"irregular",
+ when:"各處不定期招訓,通常需完成課程與實習",
+ desc:"工作包括保育巡查、解說、環境維護與活動協勤。多數園區要求年滿 18 歲、能完成培訓並每年服勤達一定時數。",
+ how:"到各管理處網站查詢招募簡章。", link:"https://www.nps.gov.tw", linkText:"國家公園署"},
+{id:"sheipa", name:"雪霸國家公園保育志工(第 7 期)", org:"雪霸國家公園管理處", animals:["櫻花鉤吻鮭"], type:"現場救援與棲地", commit:"長期排班", skill:"需專業能力", region:"中部", status:"irregular",
+ when:"2026 年第 7 期培訓分 10/17–19、10/31–11/2 兩梯次,報名已過",
+ desc:"在高山山莊與步道宣導山區環境維護,雪季協助巡山回報與救援。需有雪霸園區高山登山經驗與裝備,每年服勤至少 72 小時。處內保育志工也參與國寶魚放流與族群估算。",
+ how:"留意下一期甄訓簡章。", link:"https://www.taiwan.nps.gov.tw/upload/cmNormalFile/2026-06-22/0d9ad3ec-936f-472a-9c62-42aad0d33cc7/雪霸國家公園管理處第7期保育志工甄訓簡章.pdf", linkText:"簡章(PDF)"},
+{id:"npust", name:"野生動物照養與解說志工", org:"屏東科技大學保育類野生動物收容中心", animals:["any"], type:"現場救援與棲地", commit:"長期排班", skill:"需受訓", region:"南部", status:"irregular",
+ when:"依中心公告招募培訓",
+ desc:"中心自 1992 年起收容查緝、救傷與棄養的保育類野生動物,曾收容、野放、救傷及協助送返超過 6,000 隻。志工協助照養與解說。",
+ how:"到中心官網查最新招募。", link:"https://ptrc.npust.edu.tw", linkText:"收容中心官網"},
+{id:"leopardcoop", name:"石虎友善雞舍改造", org:"台灣石虎保育協會", animals:["石虎"], type:"現場救援與棲地", commit:"單次或短期", skill:"無需經驗", region:"中部", status:"irregular",
+ when:"不定期舉辦,多在苗栗山區,需體力",
+ desc:"志工到有石虎捕食紀錄的農戶,搬運材料、固定地樁、架設防護網、清除可攀爬的枝條。目的是減少衝突,讓農民少用獸鋏與毒餌。",
+ how:"追蹤協會公開招募,或透過合作的企業與團體參加。", link:"https://www.cna.com.tw/postwrite/chi/436044", linkText:"2026 年志工場次報導"},
+{id:"oca", name:"海洋保育志工", org:"海洋委員會海洋保育署", animals:["海龜與鯨豚"], type:"現場救援與棲地", commit:"長期排班", skill:"需受訓", region:"全台", status:"irregular",
+ when:"依海保署公告招募,2024 年共 382 位志工",
+ desc:"分成教育推廣隊、海域環境維護隊、海洋野生動物救援隊與友善釣魚宣導隊。2024 年截至 9 月底共執勤 474 人次、1,760 小時。",
+ how:"至海保署官網查志工招募公告(搜尋「海洋保育署 志工」)。", link:null, linkText:""},
+{id:"ocagrant", name:"海洋保育在地守護計畫(團體提案)", org:"海洋委員會海洋保育署", animals:["海龜與鯨豚","白海豚"], type:"團體或倡議", commit:"長期排班", skill:"需專業能力", region:"全台", status:"ended",
+ when:"115 年度徵件已於 10 月 15 日截止,明年可再留意",
+ desc:"社團、學校、社區發展協會可提案,主題含潔淨海洋、棲地復育、保育推廣、友善釣魚、保護區巡護與海洋公民調查,最高補助 100 萬元。個人可加入這些在地團體。",
+ how:"想參與的個人可向當地海洋保育團體洽詢。", link:"https://udn.com/news/story/7266/8996252", linkText:"徵件報導"},
+{id:"kslions", name:"壽山動物園志工", org:"高雄市政府觀光局動物園管理中心", animals:["any"], type:"解說與教育", commit:"長期排班", skill:"需受訓", region:"南部", status:"irregular",
+ when:"不定期招募,需固定排班至少一年",
+ desc:"年滿 18 歲、能配合培訓與排班。工作有導覽解說、兒童牧場動物照養、園區秩序勸導與活動支援,每班 3 小時。",
+ how:"查高雄市動物園管理中心招募簡章。", link:"https://zoo.kcg.gov.tw/_api/content/files/zooarticles-files/3659/zooarticles-jked2nfoakg821tonrgoxw.pdf", linkText:"簡章(PDF)"},
+{id:"greenpeace", name:"綠色和平新進志工說明會", org:"綠色和平台灣辦公室", animals:["any"], type:"團體或倡議", commit:"長期排班", skill:"無需經驗", region:"全台", status:"seasonal",
+ when:"每季舉辦,最近一季已結束",
+ desc:"倡議型組織,海洋專案推動海洋庇護區與《海洋保育法》。志工可參與推廣、淨灘與行動培訓。這類活動偏政策倡議,與直接照養動物不同。",
+ how:"關注官網下一季說明會。", link:"https://www.greenpeace.org/taiwan/update/45343/綠色和平近期活動一覽｜一起守護我們的地球/", linkText:"近期活動一覽"},
+{id:"hotai", name:"和泰集團淨灘減塑全台總動員", org:"和泰集團(企業志工活動)", animals:["any"], type:"淨灘與環境維護", commit:"單次或短期", skill:"無需經驗", region:"全台", status:"ended",
+ when:"2026 年 4 月 26 日已舉辦,全台 16 處海灘同步,第 8 年",
+ desc:"可取得志工服務時數證明。每年春季舉辦的模式可作為明年參考。",
+ how:"明年 4 月前後留意活動官網。", link:"https://sdgs.ndhu.edu.tw/?p=4097", linkText:"活動通知"},
+{id:"kenting", name:"墾丁世界清潔日淨灘", org:"墾丁國家公園管理處", animals:["any"], type:"淨灘與環境維護", commit:"單次或短期", skill:"無需經驗", region:"南部", status:"ended",
+ when:"2026 年 9 月 19 日已舉辦,10 處沙灘,開放 450 名",
+ desc:"響應國際淨灘行動,現場分類並填寫記錄表。每年配合世界清潔日辦理。",
+ how:"明年 9 月前後留意墾管處公告。", link:"https://www.cna.com.tw/news/aloc/202608060191.aspx", linkText:"活動報導"},
+{id:"luodong", name:"國家森林解說宣導志工(羅東自然教育中心)", org:"林業及自然保育署宜蘭分署", animals:["any"], type:"解說與教育", commit:"長期排班", skill:"需受訓", region:"東部", status:"ended",
+ when:"2026 年第 5 期報名已於 7 月 15 日截止",
+ desc:"年滿 20 歲、65 歲以下,協助環境教育解說與遊憩服務。",
+ how:"下期請留意分署公告。", link:"https://yilan.forest.gov.tw/file/203649", linkText:"簡章(PDF)"}
+];
+const HOWTO = [
+ {t:"發現擱淺的海龜或鯨豚", b:"撥 118 通報海巡署。不要自行把牠推回海裡,鯨豚與海龜都用肺呼吸,未經檢查就推回可能嗆水死亡。"},
+ {t:"遇到穿山甲", b:"健康的成體(體長超過 40 公分、無外傷,受干擾會捲起)可直接引導回森林。尾巴流血、跛行或落單幼獸才需要介入,並聯絡當地救傷單位。保育類動物私自飼養或宰殺違法。"},
+ {t:"看到路死的野生動物", b:"拍照後上傳路殺社回報。你的紀錄曾幫助找出 2013 年鼬獾狂犬病疫情。"}
+];
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = n => n.toLocaleString("en-US");
+
+/* ---------- charts ---------- */
+function niceMax(v){ const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v/p; return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p; }
+function chartSvg(c){
+  const W=560,H=250,L=48,R=14,T=26,B=34, iw=W-L-R, ih=H-T-B;
+  const all = c.series.flatMap(s=>s.values), max = niceMax(Math.max(...all)*1.05);
+  const y = v => T + ih - v/max*ih, n = c.cats.length, step = iw/n;
+  let g = "";
+  for(let i=0;i<=4;i++){ const v = max*i/4, yy = y(v);
+    g += `<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="var(--mono)">${fmt(Math.round(v*10)/10)}</text>`; }
+  const colors = ["var(--ac)","var(--muted)"];
+  if(c.kind==="line"){
+    c.series.forEach((s,si)=>{
+      const pts = s.values.map((v,i)=>[L+step*(i+.5), y(v)]);
+      g += `<polyline fill="none" stroke="${colors[si]}" stroke-width="2.5" points="${pts.map(p=>p.join(",")).join(" ")}"/>`;
+      pts.forEach((p,i)=>{ g += `<circle cx="${p[0]}" cy="${p[1]}" r="${i===pts.length-1?5:3.5}" fill="${colors[si]}"/><text x="${p[0]}" y="${p[1]-10}" text-anchor="middle" font-size="11.5" fill="var(--ink)" font-family="var(--mono)">${fmt(s.values[i])}</text>`; });
+    });
+  } else {
+    const k = c.series.length, bw = Math.min(54, step*0.62/k);
+    c.series.forEach((s,si)=> s.values.forEach((v,i)=>{
+      const cx = L+step*(i+.5), x = cx + (si-(k-1)/2)*(bw+4) - bw/2, yy = y(v);
+      const lab = (c.labels && k===1) ? c.labels[i] : fmt(v);
+      g += `<rect x="${x}" y="${yy}" width="${bw}" height="${Math.max(1,T+ih-yy)}" rx="2" fill="${colors[si]}" ${si?'opacity=".55"':''}/><text x="${x+bw/2}" y="${yy-6}" text-anchor="middle" font-size="12" fill="var(--ink)" font-family="var(--mono)">${esc(lab)}</text>`;
+    }));
+  }
+  c.cats.forEach((t,i)=>{ g += `<text x="${L+step*(i+.5)}" y="${H-12}" text-anchor="middle" font-size="12" fill="var(--muted)">${esc(t)}</text>`; });
+  let legend = "";
+  if(c.series.length>1) legend = c.series.map((s,i)=>`<g transform="translate(${L+i*86},8)"><rect width="10" height="10" y="-8" rx="2" fill="${colors[i]}" ${i&&c.kind!=="line"?'opacity=".55"':''}/><text x="15" y="1" font-size="12" fill="var(--ink)">${esc(s.name)}</text></g>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c.title)}">${legend}${g}</svg>`;
+}
+
+/* ---------- outcomes ---------- */
+let current = "bear";
+function renderStatic(){
+  $("#nat").innerHTML = NATIONAL.map(n=>`<div><div class="k">${esc(n.k)}</div><div class="v">${esc(n.v)}</div><div class="d">${esc(n.d)}</div></div>`).join("");
+  $("#policies").innerHTML = POLICIES.map(p=>`<div class="card" style="--ac:var(--accent)"><h3>${esc(p.t)}</h3><p>${esc(p.b)}</p></div>`).join("");
+  $("#anav").innerHTML = '<button type="button" role="tab" data-id="all" style="--ac:var(--accent)"><span class="lbl"><span class="dot"></span>全部物種</span><small>並排比較</small></button>' + ANIMALS.map(a=>`<button type="button" role="tab" data-id="${a.id}" style="--ac:var(${a.color})"><span class="lbl"><span class="dot"></span>${esc(a.short)}</span><small>${esc(a.eyebrow.split(" · ")[0])}</small></button>`).join("");
+  $("#anav").addEventListener("click", e=>{ const b=e.target.closest("button[data-id]"); if(b) selectAnimal(b.dataset.id); });
+}
+const TYPES=[["stats","關鍵數字"],["chart","趨勢圖表"],["actions","保育行動"],["timeline","重要時間點"],["gaps","待解決的問題"],["sources","資料來源"]];
+const SEL=new Set(TYPES.map(t=>t[0]));
+const li = arr => arr.map(x=>`<li>${esc(x)}</li>`).join("");
+function head(a,all){
+  return `<header class="ph"><span class="eyebrow">${esc(a.eyebrow)}</span><h2>${esc(a.name)}</h2><p class="sum">${esc(a.sum)}</p>
+    <div class="chips">${a.status.map(s=>`<span class="chip ${s.trend?"trend-"+s.trend:""}">${esc(s.t)}</span>`).join("")}${all?`<button class="reset" type="button" data-go="${a.id}">只看${esc(a.short)} →</button>`:""}</div></header>`;
+}
+function blocks(a){
+  let h="";
+  if(SEL.has("stats")) h+=`<div class="stats">${a.stats.map(s=>`<div class="stat"><div class="v">${esc(s.v)}</div><div class="l">${esc(s.l)}</div></div>`).join("")}</div>`;
+  const c=[];
+  if(SEL.has("chart")) c.push(a.chart?`<figure class="card chart-card" style="margin:0"><div class="ct">${esc(a.chart.title)}</div>${chartSvg(a.chart)}<figcaption>${esc(a.chart.cap)}</figcaption></figure>`:`<div class="card"><h3>成效怎麼看</h3><p>${esc(a.name)}沒有逐年的全國計數。目前的判斷來自族群估計、社區通報增加,以及各地野外紀錄變多。數字會隨新調查更新。</p></div>`);
+  if(SEL.has("actions")) c.push(`<div class="card"><h3>做了什麼</h3><ul>${li(a.actions)}</ul></div>`);
+  if(SEL.has("timeline")) c.push(`<div class="card"><h3>重要時間點</h3><ul class="tl">${a.timeline.map(t=>`<li><span class="y">${esc(t[0])}</span><span>${esc(t[1])}</span></li>`).join("")}</ul></div>`);
+  if(SEL.has("gaps")) c.push(`<div class="card"><h3>還沒解決的事</h3><ul>${li(a.gaps)}</ul></div>`);
+  if(c.length) h+=`<div class="cols">${c.join("")}</div>`;
+  if(SEL.has("sources")) h+=`<details class="src" open><summary>資料來源(${a.sources.length})</summary><ul>${a.sources.map(x=>`<li><a href="${esc(x[1])}" target="_blank" rel="noopener">${esc(x[0])}</a></li>`).join("")}</ul></details>`;
+  return h;
+}
+function selectAnimal(id, noScroll){
+  current = id==="all" ? "all" : (ANIMALS.find(x=>x.id===id)||ANIMALS[0]).id;
+  document.querySelectorAll("#anav button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.id===current)));
+  const p=$("#panel"), none = SEL.size===0 ? `<div class="empty">請在上方至少選一種想看的資訊類型。</div>` : "";
+  if(current==="all"){
+    p.style.setProperty("--ac","var(--accent)");
+    p.innerHTML = none || ANIMALS.map(a=>`<section class="allsec" style="--ac:var(${a.color})">${head(a,true)}${blocks(a)}</section>`).join("");
+  } else {
+    const a=ANIMALS.find(x=>x.id===current);
+    p.style.setProperty("--ac",`var(${a.color})`);
+    p.innerHTML = head(a)+(none||blocks(a));
+  }
+  if(!noScroll && matchMedia("(max-width:820px)").matches) p.scrollIntoView({block:"start"});
+}
+function initPicker(){
+  const draw=()=>{ $("#pk").innerHTML=TYPES.map(t=>`<button type="button" class="tchip" data-t="${t[0]}" aria-pressed="${SEL.has(t[0])}">${t[1]}</button>`).join(""); };
+  draw();
+  $("#pk").addEventListener("click",e=>{ const b=e.target.closest("[data-t]"); if(!b) return; SEL.has(b.dataset.t)?SEL.delete(b.dataset.t):SEL.add(b.dataset.t); draw(); selectAnimal(current,true); });
+  $("#pkAll").addEventListener("click",()=>{ TYPES.forEach(t=>SEL.add(t[0])); draw(); selectAnimal(current,true); });
+  $("#pkNone").addEventListener("click",()=>{ SEL.clear(); draw(); selectAnimal(current,true); });
+  $("#panel").addEventListener("click",e=>{ const b=e.target.closest("[data-go]"); if(b){ selectAnimal(b.dataset.go); window.scrollTo(0,0); } });
+  $("#homeAnimals").innerHTML = ANIMALS.map(a=>`<a class="chip homechip" href="#${a.id}" style="--ac:var(${a.color})"><span class="dot"></span>${esc(a.name)}</a>`).join("");
+}
+
+/* ---------- community ---------- */
+/* 站長請在這裡填入自己的紀錄片:title 片名、tag 相關動物或主題、desc 簡介、url 影片連結(例如 YouTube) */
+const DOCS=[
+ {title:"【片名 01,請替換】",tag:"主題 / 動物",desc:"在這裡寫這支紀錄片拍的是哪次活動、你做了什麼、看到了什麼。",url:""},
+ {title:"【片名 02,請替換】",tag:"主題 / 動物",desc:"在這裡寫這支紀錄片拍的是哪次活動、你做了什麼、看到了什麼。",url:""},
+ {title:"【片名 03,請替換】",tag:"主題 / 動物",desc:"在這裡寫這支紀錄片拍的是哪次活動、你做了什麼、看到了什麼。",url:""}
+];
+const SK="tw-cons-stories", FK="tw-cons-feedback";
+const lsGet=k=>{ try{ return JSON.parse(localStorage.getItem(k)||"[]"); }catch(e){ return []; } };
+const lsSet=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
+let stories=lsGet(SK), feedback=lsGet(FK);
+function renderStories(){
+  $("#stories").innerHTML = stories.length ? stories.slice().reverse().map(x=>`<article class="story"><span class="chip" style="justify-self:start">${esc(x.topic)}</span><p>${esc(x.text)}</p><div class="note">${esc(x.name)} · ${esc(x.date)} <button class="reset" type="button" data-del="${x.id}">刪除</button></div></article>`).join("") : `<div class="empty" style="grid-column:1/-1">還沒有人分享。成為第一位吧。</div>`;
+}
+function initCommunity(){
+  $("#docs").innerHTML = DOCS.map(d=>`<article class="doc"><div class="thumb" aria-hidden="true"><i></i></div><div class="db"><span class="chip" style="justify-self:start">${esc(d.tag)}</span><h4>${esc(d.title)}</h4><p>${esc(d.desc)}</p>${d.url?`<a href="${esc(d.url)}" target="_blank" rel="noopener">觀看影片 ↗</a>`:`<span class="note">影片即將上架</span>`}</div></article>`).join("");
+  $("#st").innerHTML = [...ANIMAL_OPTS,"志工活動體驗","其他"].map(o=>`<option>${esc(o)}</option>`).join("");
+  renderStories();
+  $("#storyForm").addEventListener("submit",e=>{ e.preventDefault();
+    stories.push({id:Date.now(),name:$("#sn").value.trim(),topic:$("#st").value,text:$("#sx").value.trim(),date:new Date().toLocaleDateString("zh-TW")});
+    lsSet(SK,stories); renderStories(); e.target.reset(); $("#storyOk").hidden=false; });
+  $("#stories").addEventListener("click",e=>{ const b=e.target.closest("[data-del]"); if(!b) return; stories=stories.filter(x=>String(x.id)!==b.dataset.del); lsSet(SK,stories); renderStories(); });
+  $("#fbForm").addEventListener("submit",e=>{ e.preventDefault();
+    feedback.push({cat:$("#fc").value,contact:$("#fk").value.trim(),text:$("#ft").value.trim(),date:new Date().toISOString()});
+    lsSet(FK,feedback); e.target.reset(); $("#fbOk").hidden=false; });
+  document.querySelector("#view-community .csub").addEventListener("click",e=>{ const b=e.target.closest("[data-jump]"); if(b) document.getElementById(b.dataset.jump).scrollIntoView({behavior:"smooth",block:"start"}); });
+}
+
+/* ---------- volunteers ---------- */
+const ANIMAL_OPTS = ["石虎","穿山甲","黑熊","鳥類","海龜與鯨豚","白海豚","陸蟹","櫻花鉤吻鮭"];
+const TYPE_OPTS = ["公民科學調查","現場救援與棲地","解說與教育","淨灘與環境維護","團體或倡議"];
+const COMMIT_OPTS = ["隨手可做","單次或短期","長期排班"];
+const SKILL_OPTS = ["無需經驗","需受訓","需專業能力"];
+const REGION_OPTS = ["北部","中部","南部","東部","離島"];
+const F = {animal:null,type:null,commit:null,skill:null,region:null,q:"",ended:false};
+const ORDER = {open:0,seasonal:1,irregular:2,ended:3};
+function buildOpts(id,key,list){
+  $("#"+id).innerHTML = list.map(o=>`<button type="button" class="opt" data-k="${key}" data-v="${esc(o)}" aria-pressed="false">${esc(o)}</button>`).join("");
+}
+function matches(v){
+  if(!F.ended && v.status==="ended") return false;
+  if(F.animal && !(v.animals.includes(F.animal)||v.animals.includes("any"))) return false;
+  if(F.type && v.type!==F.type) return false;
+  if(F.commit && v.commit!==F.commit) return false;
+  if(F.skill && v.skill!==F.skill) return false;
+  if(F.region && !(v.region===F.region||v.region==="全台")) return false;
+  if(F.q){ const t=(v.name+v.org+v.desc+v.type+v.animals.join("")).toLowerCase(); if(!t.includes(F.q.toLowerCase())) return false; }
+  return true;
+}
+function renderVol(){
+  document.querySelectorAll(".opt").forEach(b=>b.setAttribute("aria-pressed", String(F[b.dataset.k]===b.dataset.v)));
+  const list = VOL.filter(matches).sort((a,b)=>ORDER[a.status]-ORDER[b.status]);
+  $("#vcount").textContent = `共 ${list.length} 項`;
+  let note = "";
+  if(F.animal && !VOL.some(v=>v.status!=="ended" && v.animals.includes(F.animal)))
+    note = `<div class="empty" style="grid-column:1/-1;padding:14px">目前沒有找到專門為「${esc(F.animal)}」對外招募的志工項目,下面列出不限物種、也能間接幫上忙的選項。${F.animal==="黑熊"?"黑熊的現場工作多由部落巡守隊負責,可關注林保署各分署與在地部落的合作。":""}</div>`;
+  $("#vgrid").innerHTML = note + (list.length ? list.map(v=>{
+    const aText = v.animals.includes("any") ? "不限物種" : v.animals.join("、");
+    return `<article class="vcard ${v.status==="ended"?"ended":""}"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="st ${v.status}">${STATUS[v.status]}</span><span class="org">${esc(aText)}</span></div>
+    <div><h3>${esc(v.name)}</h3><div class="org">${esc(v.org)}</div></div>
+    <p>${esc(v.desc)}</p>
+    <dl class="meta" style="margin:0"><dt>時間</dt><dd>${esc(v.when)}</dd><dt>方式</dt><dd>${esc(v.type)} · ${esc(v.commit)} · ${esc(v.skill)}</dd><dt>地區</dt><dd>${esc(v.region)}</dd><dt>怎麼參加</dt><dd>${esc(v.how)}</dd></dl>
+    ${v.link?`<a href="${esc(v.link)}" target="_blank" rel="noopener">${esc(v.linkText||"前往")} ↗</a>`:""}</article>`;}).join("") : `<div class="empty" style="grid-column:1/-1">沒有符合條件的項目。放寬一個條件,或勾選顯示已結束的項目。</div>`);
+}
+function initVol(){
+  buildOpts("f-animal","animal",ANIMAL_OPTS); buildOpts("f-type","type",TYPE_OPTS); buildOpts("f-commit","commit",COMMIT_OPTS);
+  buildOpts("f-skill","skill",SKILL_OPTS); buildOpts("f-region","region",REGION_OPTS);
+  $("#howto").innerHTML = HOWTO.map(h=>`<div class="callout"><h3>${esc(h.t)}</h3><p>${esc(h.b)}</p></div>`).join("");
+  document.querySelector(".fbar").addEventListener("click", e=>{ const b=e.target.closest(".opt"); if(!b) return; F[b.dataset.k] = F[b.dataset.k]===b.dataset.v ? null : b.dataset.v; renderVol(); });
+  $("#q").addEventListener("input", e=>{ F.q=e.target.value.trim(); renderVol(); });
+  $("#f-ended").addEventListener("change", e=>{ F.ended=e.target.checked; renderVol(); });
+  $("#reset").addEventListener("click", ()=>{ Object.assign(F,{animal:null,type:null,commit:null,skill:null,region:null,q:"",ended:false}); $("#q").value=""; $("#f-ended").checked=false; renderVol(); });
+}
+
+/* ---------- views & hash ---------- */
+/* ---------- game ---------- */
+const QS=[
+{a:"bear",q:"林保署 2026 年 3 月對台灣黑熊的初步估計,約有多少隻?",o:["約 300 隻","約 600 隻","約 1,200 隻","約 5,000 隻"],c:2,e:"初步估計約 1,200 隻,十多年前學者的評估是 200–600 隻。年底前預計公布更精確的數字。"},
+{a:"bear",q:"黑熊有活動紀錄的鄉鎮數,2018 年之後和 2011–2017 年相比如何?",o:["17 個增加到 27 個","27 個減少到 17 個","都是 17 個","5 個增加到 8 個"],c:0,e:"從 17 個增加到 27 個,顯示族群向低海拔與更多地區擴散。"},
+{a:"bear",q:"「黑熊生態服務給付」想換取的是什麼?",o:["遊客購買門票","農民、林農、畜禽飼養戶做防護與通報","獵人上繳熊皮","學校舉辦校外教學"],c:1,e:"給農民、林農、畜禽飼養戶獎勵金,換取防護與通報,降低人熊衝突。"},
+{a:"cat",q:"哪一種動物是台灣唯一現生的原生貓科動物?",o:["石虎","雲豹","黑熊","水獺"],c:0,e:"石虎是台灣唯一現生原生貓科,保育法列為一級瀕臨絕種。"},
+{a:"cat",q:"全台石虎的估計數量約為多少?",o:["約 50 隻","約 500 隻","約 5,000 隻","約 50,000 隻"],c:1,e:"全台約 500 隻,集中在苗栗、台中、南投的淺山。"},
+{a:"cat",q:"友善石虎生態服務給付,2019 年先在哪裡試辦?",o:["花蓮","屏東","南投中寮","宜蘭"],c:2,e:"2019 年在南投中寮試辦,2021 年正式推動。"},
+{a:"cat",q:"2011 年至 2019 年 1 月,全台有幾筆石虎路殺紀錄?",o:["7 筆","25 筆","75 筆","750 筆"],c:2,e:"共 75 筆,路殺仍是石虎最難解的問題之一。"},
+{a:"pangolin",q:"2019 年調查估計,台灣穿山甲約有多少隻?",o:["約 150 隻","約 1,500 隻","約 15,000 隻","約 150,000 隻"],c:2,e:"約 1 萬 5 千隻。台灣是全球少數穿山甲族群穩定恢復的地方。"},
+{a:"pangolin",q:"穿山甲目前最大的威脅是什麼?",o:["盜獵","遊蕩犬與淺山開發","冬季低溫","外來種植物"],c:1,e:"盜獵壓力已被遏止,現在傷害主要來自遊蕩犬與淺山開發。"},
+{a:"bird",q:"全球約多少比例的黑面琵鷺,在台灣度冬?",o:["約一成","約三成","約六成","幾乎全部"],c:2,e:"全球約六成黑面琵鷺在台灣過冬。"},
+{a:"bird",q:"2026 年 1 月,台灣記錄到多少隻黑面琵鷺?",o:["2,719 隻","4,719 隻","7,746 隻","822,365 隻"],c:1,e:"台灣 4,719 隻,歷年新高。7,746 隻是全球普查總數。"},
+{a:"bird",q:"友善魚塭給付要求魚塭在收成後,維持淺水超過多久?",o:["1 天","1 週","1 個月","1 年"],c:2,e:"10 月至隔年 4 月間維持淺水超過 1 個月,每公頃最高 1 萬元。"},
+{a:"dolphin",q:"台灣白海豚的族群數量約為多少?",o:["約 5 隻","約 50 隻","約 500 隻","約 5,000 隻"],c:1,e:"約 47–50 隻,台灣族群被 IUCN 列為極危。"},
+{a:"dolphin",q:"白海豚的目擊回報,主要由哪一群人提供?",o:["登山客","賞鳥人","漁民","外國遊客"],c:2,e:"280 位漁民加入回報群組,2024 年回報 110 筆目擊。"},
+{a:"marine",q:"2024 年全台海龜擱淺通報有幾起?",o:["32 起","159 起","325 起","3,250 起"],c:2,e:"325 起,其中 88 隻為活體。159 起是鯨豚的通報數。"},
+{a:"marine",q:"2024 年太平島記錄到多少窩綠蠵龜卵窩?",o:["22 窩","221 窩","2,210 窩","22,100 窩"],c:1,e:"221 窩,來自 141 隻母龜,太平島是全國最大的產卵地。"},
+{a:"marine",q:"民眾發現擱淺的鯨豚,自行把牠推回海中,常會怎樣?",o:["牠順利回到族群","導致嗆傷而死亡","牠會馬上游走並痊癒","沒有任何影響"],c:1,e:"常導致嗆傷死亡。請先通報救援網,不要自行推回海中。"},
+{a:"fish",q:"1980 年代,七家灣溪的櫻花鉤吻鮭只剩多少尾?",o:["20 多尾","200 多尾","2,000 多尾","20,000 多尾"],c:1,e:"只剩 200 多尾,經三十多年復育才回升。"},
+{a:"fish",q:"2025 年統計的野生櫻花鉤吻鮭族群約有多少尾?",o:["1,602 尾","16,020 尾","160,200 尾","1,602,000 尾"],c:1,e:"16,020 尾,是歷史第 3 高。"},
+{a:"fish",q:"2025 年 9 月,魚苗是用什麼方式送到司界蘭溪上游放流?",o:["直升機吊掛","無人機空投","火車運送","背夫徒步"],c:0,e:"首次以直升機吊掛魚苗放流,補齊歷史流域棲地的最後一塊拼圖。"}
+];
+const ROUND=10, SECS=15, G={i:0,score:0,streak:0,ok:0,list:[],t0:0,timer:null,done:false};
+const gBest=()=>{ try{ return +localStorage.getItem("tw-cons-best")||0; }catch(e){ return 0; } };
+const gSaveBest=v=>{ try{ localStorage.setItem("tw-cons-best",String(v)); }catch(e){} };
+const shuf=a=>{ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+function gHome(){
+  clearInterval(G.timer);
+  $("#gbox").innerHTML=`<div class="gcenter"><h3 style="font:900 22px var(--serif);margin:0">準備好了嗎?</h3><p>共 ${ROUND} 題,每題 ${SECS} 秒。答對 +100 分,答得越快最多再 +50,連續答對每題再加 20(最多 +100)。</p><p class="note">你的最高分:<b>${gBest()}</b>(分數只存在這台裝置)</p><button class="btn" data-act="start" type="button">開始挑戰</button></div>`;
+}
+function gStart(){
+  G.list=shuf(QS).slice(0,ROUND).map(q=>{ const ix=shuf(q.o.map((t,i)=>i)); return {...q,opts:ix.map(i=>q.o[i]),ans:ix.indexOf(q.c)}; });
+  G.i=0; G.score=0; G.streak=0; G.ok=0; gQ();
+}
+function gTick(){
+  if($("#view-game").hidden){ G.t0+=250; return; }
+  const el=(Date.now()-G.t0)/1000, f=$("#gfill");
+  if(f) f.style.width=Math.max(0,100-el/SECS*100)+"%";
+  if(el>=SECS) gAns(-1);
+}
+function gQ(){
+  clearInterval(G.timer);
+  const q=G.list[G.i];
+  $("#gbox").innerHTML=`<div class="ghead"><span>第 <b>${G.i+1}</b> / ${ROUND} 題</span><span>得分 <b id="gsc">${G.score}</b></span><span>連續答對 <b id="gst">${G.streak}</b></span></div><div class="gbar"><i id="gfill"></i></div><h3 class="gq">${esc(q.q)}</h3><div class="gopts">${q.opts.map((t,i)=>`<button class="gopt" type="button" data-i="${i}">${esc(t)}</button>`).join("")}</div><div id="gfb"></div>`;
+  G.done=false; G.t0=Date.now(); G.timer=setInterval(gTick,250);
+}
+function gAns(i){
+  if(G.done) return; G.done=true; clearInterval(G.timer);
+  const q=G.list[G.i], el=(Date.now()-G.t0)/1000, right=i===q.ans; let pts=0;
+  if(right){ G.streak++; G.ok++; pts=100+Math.round(50*Math.max(0,1-el/SECS))+20*Math.min(G.streak-1,5); G.score+=pts; } else G.streak=0;
+  document.querySelectorAll("#gbox .gopt").forEach((b,k)=>{ b.disabled=true; if(k===q.ans) b.classList.add("good"); else if(k===i) b.classList.add("bad"); });
+  $("#gsc").textContent=G.score; $("#gst").textContent=G.streak;
+  const an=ANIMALS.find(x=>x.id===q.a);
+  $("#gfb").innerHTML=`<div class="card"><h3>${right?"答對了 +"+pts+" 分":(i<0?"時間到":"答錯了")}</h3><p>${esc(q.e)}</p><p><a href="#${q.a}">看「${esc(an.short)}」的完整資料 →</a></p></div><button class="btn" type="button" data-act="next" style="margin-top:12px">${G.i<ROUND-1?"下一題":"看結果"}</button>`;
+}
+function gEnd(){
+  const best=Math.max(gBest(),G.score), isNew=G.score>gBest(); gSaveBest(best);
+  const rank=G.score>=1800?"保育達人":G.score>=1200?"山林守護者":G.score>=600?"淺山巡守員":"保育新手";
+  $("#gbox").innerHTML=`<div class="gcenter"><span class="kicker">你的稱號</span><h3 style="font:900 26px var(--serif);margin:0">${rank}</h3><div class="gbig">${G.score}</div><p>答對 ${G.ok} / ${ROUND} 題${isNew&&G.score>0?",刷新最高分!":""}</p><p class="note">最高分:${best}</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" type="button" data-act="start">再玩一次</button><a class="reset" href="#outcomes">回去看計畫與成效</a></div></div>`;
+}
+function initGame(){
+  gHome();
+  $("#gbox").addEventListener("click",e=>{
+    const o=e.target.closest(".gopt"); if(o){ gAns(+o.dataset.i); return; }
+    const b=e.target.closest("[data-act]"); if(!b) return;
+    if(b.dataset.act==="start") gStart();
+    else if(b.dataset.act==="next"){ G.i++; G.i<ROUND ? gQ() : gEnd(); }
+  });
+}
+
+const VIEWS=["home","outcomes","volunteer","game","community"];
+function showView(v){
+  VIEWS.forEach(n=>{ $("#view-"+n).hidden = n!==v; const t=$("#tab-"+n); if(t) t.setAttribute("aria-selected", String(n===v)); });
+}
+function route(){
+  const h = location.hash.slice(1) || "home";
+  let v = "home";
+  if(h==="outcomes"){ v=h; selectAnimal(current,true); }
+  else if(h==="volunteer"||h==="community"||h==="game") v=h;
+  else if(h==="all"||ANIMALS.some(a=>a.id===h)){ v="outcomes"; selectAnimal(h,true); }
+  showView(v); window.scrollTo(0,0);
+}
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{ location.hash = b.dataset.view; }));
+window.addEventListener("hashchange", route);
+renderStatic(); initVol(); renderVol(); selectAnimal("bear", true); initPicker(); initCommunity(); initGame(); route();
+</script>
+
+</body></html>
